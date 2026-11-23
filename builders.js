@@ -243,13 +243,29 @@ window.ParkBuilders = (function(){
     K.put(B(6,.15,3),'paving',0,.07,0); K.put(B(6,2.6,.1),'glass',0,1.4,-1.4); K.put(B(6.4,.2,3.4),'roof',0,2.8,0); K.put(B(.12,2.7,.12),'darksteel',-3,1.4,1.3); K.put(B(.12,2.7,.12),'darksteel',3,1.4,1.3);
     K.put(B(4,.45,.6),'wood',0,.45,-.9); K.put(B(6.44,.3,3.44),'z_'+st.zone,0,2.6,0); K.box(0,-1.4,3,.2);
     const road=C.worldKit(90,159.5,0); road.put(B(130,.05,4.4),'asphalt',0,.03,0);
-    const car=new THREE.Group(); const body=new THREE.Mesh(B(2.2,2,4.2),C.M.white2); body.position.y=1.25; body.castShadow=true; car.add(body);
-    const win=new THREE.Mesh(B(2.24,.8,3.6),C.M.glassDark); win.position.y=1.7; car.add(win);
-    const band=new THREE.Mesh(B(2.26,.25,4.26),C.M['z_'+st.zone]); band.position.y=.6; car.add(band);
-    for(const [x,z] of [[-1.05,-1.4],[1.05,-1.4],[-1.05,1.4],[1.05,1.4]]){ const w=new THREE.Mesh(Cy(.4,.4,.3,14),C.M.darksteel); w.rotation.z=PI/2; w.position.set(x,.4,z); car.add(w); }
-    car.rotation.y=PI/2; C.scene.add(car);
+    // an electric pod shuttle, after the proposal render: pink rounded shell, white skirt, wraparound glass. Front faces local +x.
+    const car=new THREE.Group(), L=4.6, H=2.2, Wd=2, y0=.35, rr=.62, bv=.08;
+    const pink=new THREE.MeshStandardMaterial({color:'#efc0cf',roughness:.42,metalness:.08}), glass=new THREE.MeshStandardMaterial({color:'#24313d',roughness:.12,metalness:.3});
+    const pm=(g,m,x,y,z,sh)=>{ const o=new THREE.Mesh(g,m); o.position.set(x,y,z); if(sh) o.castShadow=true; car.add(o); return o; };
+    const rrShape=(l,h,r)=>{ const sh=new THREE.Shape(), a=l/2, x0=-a, x1=a, b0=0, b1=h; sh.moveTo(x0+r,b0); sh.lineTo(x1-r,b0); sh.quadraticCurveTo(x1,b0,x1,b0+r); sh.lineTo(x1,b1-r); sh.quadraticCurveTo(x1,b1,x1-r,b1); sh.lineTo(x0+r,b1); sh.quadraticCurveTo(x0,b1,x0,b1-r); sh.lineTo(x0,b0+r); sh.quadraticCurveTo(x0,b0,x0+r,b0); return sh; };
+    const shell=new THREE.ExtrudeGeometry(rrShape(L-2*bv,H-2*bv,rr),{depth:Wd-2*bv,bevelEnabled:true,bevelThickness:bv,bevelSize:bv,bevelSegments:3,curveSegments:10}); shell.translate(0,y0+bv,-(Wd-2*bv)/2);
+    pm(shell,pink,0,0,0,true);
+    // glass: a band round the sides and a tall windscreen at each end
+    for(const sz of [-1,1]) pm(B(3.1,.95,.04),glass,0,1.62,sz*(Wd/2+.005));
+    for(const sx of [-1,1]){ pm(B(.04,.9,Wd-.36),glass,sx*(L/2+.005),1.48,0); for(const sz of [-1,1]) pm(B(.45,.95,.04),glass,sx*1.86,1.62,sz*(Wd/2+.005)); }
+    // pillars between the side windows, doors on the kerb side
+    for(const x of [-.55,.55]) for(const sz of [-1,1]) pm(B(.1,.97,.06),pink,x,1.62,sz*(Wd/2+.01));
+    pm(B(.03,1.6,.06),C.M.darksteel,0,1.2,Wd/2+.02);
+    // white skirt, roof pod, lights
+    pm(B(L-.5,.32,Wd+.03),C.M.white2,0,.56,0); pm(B(L-.9,.06,Wd+.05),C.M['z_'+st.zone],0,.75,0);
+    const roof=new THREE.ExtrudeGeometry(rrShape(2.4,.16,.07),{depth:1.2,bevelEnabled:true,bevelThickness:.05,bevelSize:.05,bevelSegments:2}); roof.translate(0,y0+H,-.6); pm(roof,C.M.white2,0,0,0,true);
+    for(const sz of [-1,1]){ pm(B(.05,.09,.45),C.M.lampstrip,L/2+.02,.95,sz*.55); pm(B(.05,.09,.45),C.M.red,-L/2-.02,.95,sz*.55); }
+    // wheels sit under the shell with dark arches
+    for(const x of [-1.5,1.5]) for(const sz of [-1,1]){ const arch=pm(Cy(.47,.47,.02,24),C.M.glassDark,x,.36,sz*(Wd/2+.012)); arch.rotation.x=PI/2;
+      const w=pm(Cy(.36,.36,.22,18),C.M.darksteel,x,.36,sz*.95); w.rotation.x=PI/2; const hub=pm(Cy(.17,.17,.24,12),C.M.steel,x,.36,sz*.95); hub.rotation.x=PI/2; }
+    C.scene.add(car);
     const dyn={x:0,z:159.5,r:2.4}; C.dynCol.push(dyn);
-    C.anim.push(t=>{ const T=40, ph=(t%T)/T; let s; if(ph<.15) s=0; else if(ph<.5) s=(ph-.15)/.35; else if(ph<.65) s=1; else s=1-(ph-.65)/.35; s=s*s*(3-2*s); const x=30+s*118; car.position.set(x,0,159.5); dyn.x=x; car.rotation.y= ph<.5?PI/2:-PI/2; });
+    C.anim.push(t=>{ const T=40, ph=(t%T)/T; let s; if(ph<.15) s=0; else if(ph<.5) s=(ph-.15)/.35; else if(ph<.65) s=1; else s=1-(ph-.65)/.35; s=s*s*(3-2*s); const x=30+s*118; car.position.set(x,0,159.5); dyn.x=x; car.rotation.y= ph<.5?0:PI; });
   };
   b.hall=(st,K,C)=>{
     const w=34,d=24,h=8;

@@ -235,7 +235,7 @@ function trees(Cx,list){ const scene=Cx.scene, low=Cx.low, M=Cx.M;
       cr.setColorAt(i,cols[i%cols.length]); if(!t.far) Cx.colC.push({x:t.x,z:t.z,r:.35*s}); });
   }
 }
-function flowers(Cx){ const {N,E}=Cx.paths, scene=Cx.scene; const main=[['gate','p1'],['p1','c'],['c','cn'],['cn','n'],['c','l'],['c','u'],['p1','ev'],['p1','ng']]; const P=[];
+function flowers(Cx){ const {N,E}=Cx.paths, scene=Cx.scene; const main=[['out','gate'],['gate','p1'],['p1','c'],['c','cn'],['cn','n'],['c','l'],['c','u'],['p1','ev'],['p1','ng']]; const P=[];
   for(const [a,b] of main){ const A=N[a],B2=N[b], len=Math.hypot(B2[0]-A[0],B2[1]-A[1]), ux=(B2[0]-A[0])/len, uz=(B2[1]-A[1])/len;
     for(let d=6;d<len-6;d+=Cx.low?.9:.55) for(const side of [-1,1]) for(const off of [2.6,3.1]){ if(Math.random()<.15) continue; P.push([A[0]+ux*d-uz*side*(off+Math.random()*.15),A[1]+uz*d+ux*side*(off+Math.random()*.15),(Math.floor(d/7)+(side>0?1:0))%3]); } }
   const im=new THREE.InstancedMesh(Sp(.17,0),new THREE.MeshStandardMaterial({color:'#ffffff',roughness:.7}),P.length), lv=new THREE.InstancedMesh(Sp(.2,0),new THREE.MeshStandardMaterial({color:'#4f7f37',roughness:.9,flatShading:true}),P.length);
