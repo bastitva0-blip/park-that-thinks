@@ -1,0 +1,314 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>A Park That Thinks · Devalok</title>
+<meta name="description" content="Walk, fly and teleport through Devalok’s proposed AI park for Lucknow Development Authority: 87 live stations in nine zones.">
+<meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#d33163">
+<meta property="og:title" content="A Park That Thinks · Devalok">
+<meta property="og:description" content="Walk, fly and teleport through Devalok’s proposed AI park for Lucknow Development Authority: 87 live stations in nine zones.">
+<meta property="og:image" content="og.jpg">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" type="image/png" href="icon.png">
+<link rel="apple-touch-icon" href="icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Manrope:wght@600;700&display=swap">
+<style>[hidden]{display:none!important}
+/* Layout: a full-screen 3D park with light, brand-white HUD panels floating over it. Deliberately one look (light-first brand). */
+:root{
+  --ink:#1a1a1a; --muted:#4a4a4a; --soft:#666666; --paper:#ffffff; --tint:#f8f4f5;
+  --accent:#d33163; --struct:#712846; --line:#eadfe2; --shadow:0 8px 28px rgba(40,20,30,.18);
+  --f-body:'Inter','Inter Fallback',system-ui,-apple-system,sans-serif;
+  --f-head:'Manrope','Inter',system-ui,sans-serif;
+  color-scheme:light;
+}
+html,body{height:100%;margin:0;overflow:hidden;background:#cfdde6;color:var(--ink);font:14px/1.45 var(--f-body);-webkit-user-select:none;user-select:none;touch-action:none}
+#game{position:fixed;inset:0}
+#game canvas{display:block;width:100%;height:100%}
+.hud{position:fixed;pointer-events:none;z-index:5}
+.panel{background:var(--paper);border-radius:14px;box-shadow:var(--shadow);pointer-events:auto}
+button{font:600 14px/1 var(--f-body);color:var(--ink);cursor:pointer}
+button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+/* top left: passport chip */
+#chip{top:calc(12px + env(safe-area-inset-top,0px));left:max(12px, env(safe-area-inset-left,0px));display:flex;align-items:center;gap:12px;padding:8px 12px 8px 10px;border:0}
+#chip img{height:18px;width:auto;display:block}
+#chip .sep{width:1px;height:22px;background:var(--line)}
+#chip .pts{font:700 18px/1 var(--f-head);color:var(--accent);font-variant-numeric:tabular-nums}
+#chip .lab{font-size:11px;color:var(--muted);letter-spacing:.04em}
+#chip .stamps{display:flex;gap:3px}
+#chip .stamps i{width:9px;height:9px;border-radius:50%;border:1.5px solid var(--zc);display:block}
+#chip .stamps i.got{background:var(--zc)}
+/* top right: minimap + buttons */
+#tr{top:calc(12px + env(safe-area-inset-top,0px));right:max(12px, env(safe-area-inset-right,0px));display:flex;flex-direction:column;align-items:flex-end;gap:8px}
+#mini{width:150px;height:150px;border-radius:14px;box-shadow:var(--shadow);background:var(--paper);pointer-events:auto;cursor:pointer;display:block}
+.btns{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;max-width:360px}
+.btns button{pointer-events:auto;background:var(--paper);border:0;border-radius:999px;padding:9px 12px;box-shadow:var(--shadow)}
+#zoneName{top:calc(16px + env(safe-area-inset-top,0px));left:50%;transform:translateX(-50%);font:700 13px/1 var(--f-head);letter-spacing:.08em;text-transform:uppercase;background:var(--paper);padding:8px 14px;border-radius:999px;box-shadow:var(--shadow);display:flex;gap:8px;align-items:center;opacity:0;transition:opacity .4s}
+#zoneName.show{opacity:1}
+#zoneName i{width:10px;height:10px;border-radius:50%;display:block}
+/* labels */
+#labels{position:fixed;inset:0;pointer-events:none;z-index:3;overflow:hidden}
+.lbl{position:absolute;left:0;top:0;white-space:nowrap;background:rgba(255,255,255,.94);border-radius:999px;padding:5px 10px 5px 8px;font:600 12px/1 var(--f-body);color:var(--ink);box-shadow:0 3px 10px rgba(40,20,30,.18);display:flex;gap:6px;align-items:center;will-change:transform}
+.lbl i{width:8px;height:8px;border-radius:50%;display:block;flex:none}
+.lbl.done{background:rgba(248,244,245,.9);color:var(--muted)}
+.lbl.done::after{content:'✓';color:var(--struct);font-weight:700}
+.lbl.near{background:var(--ink);color:#fff}
+.lbl.zone{font:700 13px/1 var(--f-head);letter-spacing:.06em;text-transform:uppercase;padding:7px 12px}
+.bubble{position:absolute;left:0;top:0;background:#fff;border-radius:12px;padding:8px 12px;font:600 13px/1.3 var(--f-body);box-shadow:var(--shadow);max-width:220px;white-space:normal}
+/* prompt */
+#prompt{bottom:calc(26px + env(safe-area-inset-bottom,0px));left:50%;transform:translateX(-50%);display:none;align-items:center;gap:10px;padding:10px 14px;pointer-events:auto}
+#prompt kbd{font:700 12px/1 var(--f-body);background:var(--ink);color:#fff;border-radius:6px;padding:5px 7px}
+#prompt b{font-weight:600}
+/* toasts */
+#toasts{top:calc(64px + env(safe-area-inset-top,0px));left:50%;transform:translateX(-50%);display:flex;flex-direction:column;gap:6px;align-items:center}
+.toast{background:var(--ink);color:#fff;border-radius:999px;padding:9px 14px;font-weight:600;font-size:13px;box-shadow:var(--shadow);animation:tin .25s ease-out}
+.toast b{color:#ffd3df}
+@keyframes tin{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+/* overlays */
+.ov{position:fixed;inset:0;z-index:20;display:flex;align-items:center;justify-content:center;background:rgba(26,20,24,.38);padding:max(16px, env(safe-area-inset-top,0px)) max(16px, env(safe-area-inset-right,0px)) max(16px, env(safe-area-inset-bottom,0px)) max(16px, env(safe-area-inset-left,0px))}
+.ov[hidden]{display:none}
+.sheet{background:var(--paper);border-radius:18px;box-shadow:var(--shadow);max-width:560px;width:100%;max-height:100%;overflow:auto;-webkit-user-select:text;user-select:text}
+.card img{width:100%;height:240px;object-fit:cover;display:block;border-radius:18px 18px 0 0;background:var(--tint)}
+.card .body{padding:18px 22px 20px;display:flex;flex-direction:column;gap:10px}
+.eb{font:600 11px/1 var(--f-body);letter-spacing:.1em;text-transform:uppercase;color:var(--struct);display:flex;gap:8px;align-items:center}
+.eb i{width:9px;height:9px;border-radius:50%;display:block}
+h2{font:700 24px/1.15 var(--f-head);margin:0;text-wrap:balance}
+.card p{margin:0;color:var(--ink);font-size:15px}
+.card p.how{color:var(--muted);font-size:14px;border-left:3px solid var(--line);padding-left:10px}
+.row{display:flex;gap:8px;justify-content:space-between;align-items:center;flex-wrap:wrap}
+.btn{border:0;border-radius:999px;padding:11px 18px;background:var(--tint);color:var(--ink)}
+.btn.primary{background:var(--accent);color:#fff}
+.small{font-size:12px;color:var(--muted)}
+/* start */
+#start .sheet{padding:26px;display:flex;flex-direction:column;gap:14px;max-width:600px}
+#start img.logo{height:26px;width:auto;align-self:flex-start}
+#start h1{font:700 clamp(30px,6vw,44px)/1.04 var(--f-head);margin:0;letter-spacing:-.02em}
+#start .lede{color:var(--soft);margin:0;font-size:15px}
+.facts{display:flex;gap:10px;flex-wrap:wrap}
+.facts div{background:var(--tint);border-radius:12px;padding:10px 12px;flex:1;min-width:110px}
+.facts b{display:block;font:700 20px/1 var(--f-head);color:var(--struct)}
+.facts span{font-size:12px;color:var(--muted)}
+.keys{display:grid;grid-template-columns:auto 1fr;gap:6px 12px;font-size:13px;margin:0}
+.keys dt{font-weight:600}
+.keys dd{margin:0;color:var(--muted)}
+#loadbar{height:4px;border-radius:2px;background:var(--tint);overflow:hidden}
+#loadbar i{display:block;height:100%;width:0;background:var(--struct);transition:width .2s}
+/* passport */
+#pass .sheet{padding:22px;display:flex;flex-direction:column;gap:14px}
+.zgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.zgrid div{display:flex;gap:8px;align-items:center;padding:8px 10px;border-radius:12px;background:var(--tint);font-size:13px}
+.zgrid div i{width:26px;height:26px;border-radius:50%;border:2px dashed var(--zc);display:grid;place-items:center;font:700 11px/1 var(--f-body);color:var(--zc);flex:none}
+.zgrid div.got i{border-style:solid;background:var(--zc);color:#fff}
+.zgrid div span{color:var(--muted);font-size:11px;display:block}
+.quests{display:flex;flex-direction:column;gap:6px;margin:0;padding:0;list-style:none}
+.quests li{display:flex;gap:10px;align-items:flex-start;font-size:14px}
+.quests li i{width:18px;height:18px;border-radius:50%;border:2px solid var(--line);flex:none;margin-top:1px}
+.quests li.done i{background:var(--struct);border-color:var(--struct)}
+.quests li.done{color:var(--muted)}
+.bar{height:8px;border-radius:4px;background:var(--tint);overflow:hidden}
+.bar i{display:block;height:100%;background:var(--accent)}
+/* map */
+#map .sheet{max-width:1180px;width:100%;height:min(88vh,920px);padding:14px;display:grid;grid-template-columns:1fr 240px;grid-template-rows:auto 1fr;gap:12px}
+#map .mhead{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:10px}
+#map .mhead h2{font-size:20px}
+#map .mhead .small{display:block;margin-top:2px}
+.mwrap{position:relative;min-height:0;border-radius:14px;overflow:hidden;background:#ebe5d6}
+#bigmap{position:absolute;inset:0;width:100%;height:100%;display:block;cursor:grab;touch-action:none}
+#bigmap:active{cursor:grabbing}
+.mzoom{position:absolute;left:10px;top:10px;display:flex;flex-direction:column;gap:6px}
+.mzoom button{width:38px;height:38px;border-radius:10px;border:0;background:#fff;box-shadow:0 2px 8px rgba(40,20,30,.18);font:700 18px/1 var(--f-body)}
+.mzoom button.fit{font-size:11px}
+#mLegend{display:flex;flex-direction:column;gap:6px;overflow:auto;min-height:0}
+.lz{display:flex;align-items:center;gap:10px;border:0;background:var(--tint);border-radius:12px;padding:10px 12px;text-align:left;font:600 13px/1.2 var(--f-body)}
+.lz:hover{background:#efe6e9}
+.lz i{width:12px;height:12px;border-radius:50%;flex:none}
+.lz span{flex:1}
+.lz em{font-style:normal;color:var(--muted);font-weight:500;font-size:12px}
+#mPop{position:absolute;width:240px;background:#fff;border-radius:14px;box-shadow:var(--shadow);overflow:hidden;z-index:2}
+#mPop img{width:100%;height:110px;object-fit:cover;display:block;background:var(--tint)}
+#mPop .in{padding:10px 12px 12px;display:flex;flex-direction:column;gap:8px}
+#mPop b{font:700 15px/1.2 var(--f-head)}
+#mPop .row{justify-content:flex-start}
+#mPop .btn{padding:9px 14px;font-size:13px}
+#mpX{position:absolute;right:6px;top:6px;width:28px;height:28px;border-radius:50%;border:0;background:rgba(255,255,255,.92);font:700 14px/1 var(--f-body)}
+/* teleport list */
+#go .sheet{max-width:560px;padding:18px;display:flex;flex-direction:column;gap:12px;height:min(86vh,760px)}
+#goQ{font:500 15px/1 var(--f-body);padding:12px 14px;border-radius:12px;border:1.5px solid var(--line);outline:none;width:100%;box-sizing:border-box;-webkit-user-select:text;user-select:text}
+#goQ:focus{border-color:var(--struct)}
+#goList{overflow:auto;min-height:0;flex:1;display:flex;flex-direction:column;gap:2px;margin:0 -6px;padding:0 6px}
+.goz{display:flex;align-items:center;gap:8px;padding:12px 4px 6px;font:700 12px/1 var(--f-body);letter-spacing:.08em;text-transform:uppercase;color:var(--struct);position:sticky;top:0;background:#fff}
+.goz i{width:9px;height:9px;border-radius:50%}
+.goz small{margin-left:auto;font:500 11px/1 var(--f-body);letter-spacing:0;text-transform:none;color:var(--muted)}
+.gost{display:flex;align-items:center;justify-content:space-between;gap:10px;border:0;background:none;padding:11px 10px;border-radius:10px;text-align:left;font:500 14px/1.25 var(--f-body)}
+.gost:hover,.gost:focus-visible{background:var(--tint)}
+.gost em{font-style:normal;font-size:11px;color:var(--struct);font-weight:600}
+.gost.done span{color:var(--muted)}
+/* guided tour */
+#tourBar{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translate(-50%,8px);width:min(640px,calc(100% - 24px));z-index:6;background:#fff;border-radius:18px;box-shadow:var(--shadow);padding:16px 18px 14px;display:flex;flex-direction:column;gap:8px;opacity:.0;transition:opacity .5s,transform .5s;pointer-events:auto}
+#tourBar.show{opacity:1;transform:translate(-50%,0)}
+#tourBar h3{margin:0;font:700 22px/1.15 var(--f-head)}
+#tourBar p{margin:0;color:var(--muted);font-size:15px}
+#tourBar .bar{height:4px}
+#tourBar .row{gap:8px}
+#tourBar .row .btn{padding:9px 14px;font-size:13px}
+#tourBar .btn:disabled{opacity:.4;cursor:default}
+body.touring #tr .btns, body.touring #prompt, body.touring #touch, body.touring #hint{display:none!important}
+#flash{position:fixed;inset:0;background:#fff;opacity:0;pointer-events:none;z-index:15}
+.btns button.on{background:var(--struct);color:#fff}
+.bubble.talk{display:flex;flex-direction:column;gap:3px;max-width:260px}
+.bubble.talk b{font-weight:600}
+.bubble.talk span{font-weight:500;font-size:12px;color:var(--muted)}
+/* touch controls */
+#touch{position:fixed;inset:0;z-index:4;pointer-events:none}
+#stick{position:absolute;width:120px;height:120px;border-radius:50%;background:rgba(255,255,255,.28);border:2px solid rgba(255,255,255,.7);display:none;pointer-events:none}
+#stick i{position:absolute;left:50%;top:50%;width:52px;height:52px;margin:-26px 0 0 -26px;border-radius:50%;background:rgba(255,255,255,.92);box-shadow:var(--shadow)}
+#tbtns{position:absolute;right:max(16px, env(safe-area-inset-right,0px));bottom:calc(22px + env(safe-area-inset-bottom,0px));display:flex;gap:12px;align-items:flex-end;pointer-events:auto}
+#tbtns button{width:64px;height:64px;border-radius:50%;border:0;background:rgba(255,255,255,.92);box-shadow:var(--shadow);font-size:12px}
+#tbtns #tRead{width:auto;min-width:64px;padding:0 18px;border-radius:999px;background:var(--accent);color:#fff;display:none}
+#hint{position:fixed;left:50%;bottom:calc(110px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:rgba(26,26,26,.82);color:#fff;border-radius:999px;padding:8px 14px;font-size:12px;z-index:5;pointer-events:none;transition:opacity .6s;white-space:nowrap}
+@media (max-width:720px){
+  #map .sheet{grid-template-columns:1fr;grid-template-rows:auto 1fr auto;height:92vh;padding:12px}
+  #mLegend{flex-direction:row;overflow-x:auto;padding-bottom:2px}
+  .lz{flex:none;padding:8px 10px}
+  #mPop{width:210px}
+}
+@media (max-width:640px){
+  #zoneName{top:calc(150px + env(safe-area-inset-top,0px))}
+  #toasts{top:calc(190px + env(safe-area-inset-top,0px));width:calc(100% - 32px)}
+  .toast{text-align:center}
+  #mini{width:108px;height:108px}
+  .btns button{padding:8px 10px;font-size:13px}
+  .btns{max-width:240px}
+  #tourBar h3{font-size:19px}
+  #tourBar p{font-size:14px}
+  #chip .stamps{display:none}
+  .card img{height:180px}
+  .ov{align-items:flex-end}
+  h2{font-size:21px}
+}
+@media (prefers-reduced-motion: reduce){.toast{animation:none}#zoneName{transition:none}}
+</style>
+</head>
+<body>
+<div id="game"></div>
+<div id="labels"></div>
+
+<div class="hud panel" id="chip" role="button" tabindex="0" aria-label="Open Park Passport">
+  <img src="logo.png" alt="Devalok">
+  <span class="sep"></span>
+  <div><div class="pts" id="pts">0</div><div class="lab">points</div></div>
+  <div><div class="pts" style="color:var(--struct)" id="cnt">0/87</div><div class="lab">explored</div></div>
+  <div class="stamps" id="miniStamps"></div>
+</div>
+<div class="hud" id="tr">
+  <canvas id="mini" width="300" height="300" aria-label="Minimap. Click for the full map."></canvas>
+  <div class="btns"><button id="bTour" aria-label="Start the guided tour">Tour</button><button id="bNight" aria-label="Toggle day and night">Night</button><button id="bFly" aria-label="Toggle flying">Fly</button><button id="bGo" aria-label="Teleport to a station">Go to</button><button id="bMap">Map</button><button id="bSnd" aria-label="Toggle sound">Sound on</button><button id="bHelp" aria-label="Controls">?</button></div>
+</div>
+<div class="hud" id="zoneName"><i></i><span></span></div>
+<div class="hud" id="toasts"></div>
+<div class="hud panel" id="prompt"><kbd>E</kbd><span>Read <b id="promptName"></b></span></div>
+
+<div id="touch" hidden>
+  <div id="stick"><i></i></div>
+  <div id="tbtns"><button id="tRead">Read</button><button id="tDown" hidden>Down</button><button id="tJump">Jump</button></div>
+</div>
+<div id="hint" hidden></div>
+
+<div class="ov" id="start">
+  <div class="sheet">
+    <img class="logo" src="logo.png" alt="Devalok">
+    <h1>A Park That Thinks</h1>
+    <p class="lede">Walk through Devalok’s proposed AI park for Lucknow Development Authority. Every station from the 100-slide proposal is here, in nine zones. Find them, read them and fill your Park Passport.</p>
+    <div class="facts"><div><b>87</b><span>stations to find</span></div><div><b>9</b><span>zones to stamp</span></div><div><b>8</b><span>park quests</span></div></div>
+    <dl class="keys" id="keysDesk"><dt>Move</dt><dd>W A S D or arrow keys · Shift to run · Space to jump</dd><dt>Look</dt><dd>Click and drag, or click once to lock the mouse (Esc frees it)</dd><dt>Read</dt><dd>E when a station is close</dd><dt>Fly</dt><dd>F to take off · W flies where you look · Space up · C down</dd><dt>Travel</dt><dd>T to teleport to any station · M for the map</dd><dt>Other</dt><dd>G guided tour · N day or night · P passport</dd></dl>
+    <dl class="keys" id="keysTouch" hidden><dt>Move</dt><dd>Drag on the left side of the screen</dd><dt>Look</dt><dd>Drag on the right side</dd><dt>Read</dt><dd>Tap the pink Read button when it appears</dd><dt>Fly</dt><dd>Tap Fly, then hold Up or Down</dd><dt>Travel</dt><dd>Tap Go to, or tap the minimap for the park map</dd></dl>
+    <div id="loadbar"><i></i></div>
+    <span class="small" id="loadtxt">Building the park…</span>
+    <div class="row" style="justify-content:flex-start"><button class="btn primary" id="bStart" disabled>Walk in</button><button class="btn" id="bTourStart" disabled>Guided tour · 2 min</button><button class="btn" id="bFull">Full screen</button></div>
+  </div>
+</div>
+
+<div class="ov" id="card" hidden>
+  <div class="sheet card" role="dialog" aria-modal="true" aria-labelledby="cTitle">
+    <img id="cImg" alt="">
+    <div class="body">
+      <div class="eb" id="cEb"><i></i><span></span></div>
+      <h2 id="cTitle"></h2>
+      <p id="cText"></p>
+      <p class="how" id="cHow"></p>
+      <div class="row"><span class="small" id="cMeta"></span><span style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" id="cNext">Next unread nearby</button><button class="btn primary" id="cClose">Keep exploring</button></span></div>
+    </div>
+  </div>
+</div>
+
+<div class="ov" id="pass" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="pTitle">
+    <div class="eb"><span>Park Passport</span></div>
+    <h2 id="pTitle">Your visit so far</h2>
+    <div><div class="row small"><span id="pCount"></span><span id="pPts"></span></div><div class="bar"><i id="pBar"></i></div></div>
+    <div class="zgrid" id="pZones"></div>
+    <div class="eb"><span>Park quests</span></div>
+    <ul class="quests" id="pQuests"></ul>
+    <div class="row"><span class="small">Stamps come from reading a station in each zone.</span><button class="btn primary" id="pClose">Back to the park</button></div>
+  </div>
+</div>
+
+<div class="ov" id="map" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="mTitle">
+    <div class="mhead"><div><div class="eb"><span>Site plan · Lucknow</span></div><h2 id="mTitle">A Park That Thinks</h2><span class="small">Drag to move, scroll or pinch to zoom. Tap any dot to teleport there.</span></div><button class="btn" id="mClose">Close</button></div>
+    <div class="mwrap">
+      <canvas id="bigmap" aria-label="Illustrated park map. Tap a station to teleport there."></canvas>
+      <div class="mzoom"><button id="mZin" aria-label="Zoom in">+</button><button id="mZout" aria-label="Zoom out">−</button><button id="mFit" class="fit" aria-label="Show the whole park">All</button></div>
+      <div id="mPop" hidden><button id="mpX" aria-label="Close">×</button><img id="mpImg" alt=""><div class="in"><div class="eb" id="mpEb"><i></i><span></span></div><b id="mpName"></b><div class="row"><button class="btn primary" id="mpGo">Teleport here</button><button class="btn" id="mpRead">Read</button></div></div></div>
+    </div>
+    <div id="mLegend" aria-label="Zones"></div>
+  </div>
+</div>
+
+<div class="ov" id="go" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="goTitle">
+    <div class="row"><div><div class="eb"><span>Teleport</span></div><h2 id="goTitle" style="font-size:22px">Where to?</h2></div><button class="btn" id="goClose">Close</button></div>
+    <input id="goQ" type="search" placeholder="Search 87 stations, e.g. cloud, carrom, paathshala" aria-label="Search stations" autocomplete="off">
+    <div id="goList"></div>
+    <div class="row"><span class="small">Read stations show a tick on the map.</span><button class="btn primary" id="goRand">Surprise me</button></div>
+  </div>
+</div>
+<div id="flash"></div>
+<div id="tourBar" hidden role="region" aria-label="Guided tour">
+  <div class="eb" id="tbEb"><i></i><span></span></div>
+  <h3 id="tbTitle"></h3>
+  <p id="tbLine"></p>
+  <div class="bar"><i id="tbProg"></i></div>
+  <div class="row"><span style="display:flex;gap:8px"><button class="btn" id="tbBack">Back</button><button class="btn" id="tbPause">Pause</button><button class="btn" id="tbExit">Exit tour</button></span><button class="btn primary" id="tbNext">Next</button></div>
+</div>
+
+<div class="ov" id="done" hidden>
+  <div class="sheet" style="padding:26px;display:flex;flex-direction:column;gap:12px">
+    <div class="eb"><span>Passport complete</span></div>
+    <h2>You’ve stamped all nine zones.</h2>
+    <p style="margin:0">In the real park this unlocks a free family session and a Park Guardian badge. Keep walking: there are still stations to find, and the canopy is at its best after dark.</p>
+    <div class="row"><span class="small" id="dStats"></span><button class="btn primary" id="dClose">Keep exploring</button></div>
+  </div>
+</div>
+
+<script src="lib/three.min.js"></script>
+<script src="lib/BufferGeometryUtils.js"></script>
+<script src="lib/CopyShader.js"></script>
+<script src="lib/LuminosityHighPassShader.js"></script>
+<script src="lib/GammaCorrectionShader.js"></script>
+<script src="lib/EffectComposer.js"></script>
+<script src="lib/RenderPass.js"></script>
+<script src="lib/ShaderPass.js"></script>
+<script src="lib/UnrealBloomPass.js"></script>
+<script src="data.js"></script>
+<script src="builders.js"></script>
+<script src="art.js"></script>
+<script src="art2.js"></script>
+<script src="live.js"></script>
+<script src="audio.js"></script>
+<script src="game.js"></script>
+</body>
+</html>
