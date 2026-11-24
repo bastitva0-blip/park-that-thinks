@@ -338,6 +338,8 @@ function showHint(s){ hintEl.textContent=s; hintEl.hidden=false; hintEl.style.op
 function hideHint(){ hintEl.style.opacity=0; }
 
 /* ---------------- passport, quests, persistence ---------------- */
+const QUEST_NEEDS={talk:['kind','megaphone'],cityfloor:['kind','cityfloor'],dry:['kind','cloud'],sprint:['kind','sprint'],canopyNight:['kind','canopy'],drones:['id','drones']};
+const hasSt=([f,v])=>STS.some(s=>s[f]===v);
 const QUESTS=[
   ['read10','Read 10 stations anywhere in the park'],
   ['talk','Hear the Talking Trees translate at the gate'],
@@ -347,12 +349,14 @@ const QUESTS=[
   ['canopyNight','Watch the canopy glow after dark'],
   ['drones','See the drone murmuration over the great lawn'],
   ['zones','Stamp all nine zones'],
-];
+].filter(q=>!QUEST_NEEDS[q[0]]||hasSt(QUEST_NEEDS[q[0]]));
 const save={v:{},z:{},q:{},pts:0};
+const IDS=new Set(STS.map(s=>s.id)), seen=()=>Object.keys(save.v).filter(id=>IDS.has(id)).length;
 try{ const s=JSON.parse(localStorage.getItem('ldaParkWorld')||'null'); if(s&&s.v){ Object.assign(save,s); } }catch(e){}
 function persist(){ try{ localStorage.setItem('ldaParkWorld',JSON.stringify(save)); }catch(e){} }
 function award(n){ save.pts+=n; renderChip(); }
-function renderChip(){ $('#pts').textContent=save.pts; $('#cnt').textContent=Object.keys(save.v).length+'/'+STS.length;
+$('#nSt').textContent=STS.length; $('#nQ').textContent=QUESTS.length; $('#goQ').placeholder=$('#goQ').placeholder.replace(/\d+ stations/,STS.length+' stations');
+function renderChip(){ $('#pts').textContent=save.pts; $('#cnt').textContent=seen()+'/'+STS.length;
   const ms=$('#miniStamps'); if(!ms.children.length) for(const k in ZONES){ const i=document.createElement('i'); i.style.setProperty('--zc',ZONES[k].color); i.title=ZONES[k].name; i.dataset.z=k; ms.appendChild(i); }
   for(const i of ms.children) i.classList.toggle('got',!!save.z[i.dataset.z]); }
 function quest(id){ if(save.q[id]) return; save.q[id]=1; award(30); if(audio) audio.stamp(); const q=QUESTS.find(x=>x[0]===id); toast(`Quest complete · <b>${q[1]}</b> · +30`); persist();
@@ -360,8 +364,8 @@ function quest(id){ if(save.q[id]) return; save.q[id]=1; award(30); if(audio) au
 function visit(st){
   if(save.v[st.id]) return; save.v[st.id]=1; award(10); if(audio) audio.chime(); toast(`+10 · ${escapeHtml(st.name)}`);
   if(!save.z[st.zone]){ save.z[st.zone]=1; award(20); if(audio) setTimeout(()=>audio.stamp(),650); setTimeout(()=>toast(`Passport stamp · <b>${ZONES[st.zone].name}</b> · +20`),700);
-    if(Object.keys(save.z).length===Object.keys(ZONES).length){ setTimeout(()=>{ quest('zones'); $('#dStats').textContent=`${Object.keys(save.v).length} stations read · ${save.pts} points`; showOv('#done'); },1600); } }
-  if(Object.keys(save.v).length>=10) quest('read10');
+    if(Object.keys(save.z).length===Object.keys(ZONES).length){ setTimeout(()=>{ quest('zones'); $('#dStats').textContent=`${seen()} stations read · ${save.pts} points`; showOv('#done'); },1600); } }
+  if(seen()>=10) quest('read10');
   persist(); renderChip();
 }
 function escapeHtml(s){ return s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
@@ -386,7 +390,7 @@ function openPass(){
   $('#pZones').innerHTML=''; for(const k in ZONES){ const d=document.createElement('div'); d.className=save.z[k]?'got':''; d.style.setProperty('--zc',ZONES[k].color);
     d.innerHTML=`<i>${ZONES[k].name.replace(/[^A-Z]/g,'').slice(0,2)||ZONES[k].name[0]}</i><div></div>`; d.lastChild.innerHTML=`${escapeHtml(ZONES[k].name)}<span>${vz[k][0]} of ${vz[k][1]} read</span>`; $('#pZones').appendChild(d); }
   $('#pQuests').innerHTML=''; QUESTS.forEach(([id,t])=>{ const li=document.createElement('li'); li.className=save.q[id]?'done':''; li.innerHTML='<i></i><span></span>'; li.lastChild.textContent=t; $('#pQuests').appendChild(li); });
-  const n=Object.keys(save.v).length; $('#pCount').textContent=`${n} of ${STS.length} stations read`; $('#pPts').textContent=`${save.pts} points`; $('#pBar').style.width=(n/STS.length*100)+'%';
+  const n=seen(); $('#pCount').textContent=`${n} of ${STS.length} stations read`; $('#pPts').textContent=`${save.pts} points`; $('#pBar').style.width=(n/STS.length*100)+'%';
   showOv('#pass'); }
 $('#chip').onclick=openPass; $('#chip').onkeydown=e=>{ if(e.key==='Enter') openPass(); }; $('#pClose').onclick=()=>$('#pass').hidden=true;
 $('#dClose').onclick=()=>$('#done').hidden=true;
@@ -451,7 +455,7 @@ function drawPlan(c,bx,bz,m,vw,vh){
     }
     c.restore(); }
   // megaphone trees
-  const MG=STS.find(s=>s.kind==='megaphone'); for(const sx of [-1,1]){ c.fillStyle=ZONES.gate.color; c.beginPath(); c.arc(bx(16*sx),bz(MG.z),m(1.4),0,7); c.fill(); }
+  const MG=STS.find(s=>s.kind==='megaphone'); if(MG) for(const sx of [-1,1]){ c.fillStyle=ZONES.gate.color; c.beginPath(); c.arc(bx(16*sx),bz(MG.z),m(1.4),0,7); c.fill(); }
 }
 drawPlan(base.getContext('2d'),x=>(x-BX0)*PXM,z=>(z-BZ0)*PXM,v=>v*PXM,BW,BH);
 const ZC={}; for(const k in ZONES){ const zs=STS.filter(s=>s.zone===k); ZC[k]=[zs.reduce((a,s)=>a+s.x,0)/zs.length, zs.reduce((a,s)=>a+s.z,0)/zs.length]; }
@@ -548,16 +552,16 @@ let dryT=0, sprintState=null;
 function liveTriggers(t,dt){
   const p=player;
   // talking trees
-  const md=Math.hypot(p.x-0,p.z-MEGA.z);
+  const md=MEGA?Math.hypot(p.x-0,p.z-MEGA.z):1e9;
   if(md<24){ const ph=Math.floor(t/4.5)%PHR.length, k=(t%4.5);
     bubbles[0].textContent=PHR[ph][0]; bubbles[1].textContent=PHR[ph][1];
     if(k<3.8) place(bubbles[0],-16,9.6,MEGA.z); else bubbles[0].style.display='none';
     if(k>1.6) place(bubbles[1],16,9.6,MEGA.z); else bubbles[1].style.display='none';
     if(md<20) quest('talk'); }
   else { bubbles[0].style.display=bubbles[1].style.display='none'; }
-  if(Math.hypot(p.x-CITY.x,p.z-CITY.z)<9) quest('cityfloor');
-  const [clx,clz]=toLocal(CLOUD,p.x,p.z); if(clx>-7.6&&clx<3.8&&Math.abs(clz)<4.6){ dryT+=dt; if(dryT>3) quest('dry'); } else dryT=0;
-  if(state.nf>.8&&Math.hypot(p.x-CAN.x,p.z-CAN.z)<34) quest('canopyNight');
+  if(CITY&&Math.hypot(p.x-CITY.x,p.z-CITY.z)<9) quest('cityfloor');
+  if(CLOUD){ const [clx,clz]=toLocal(CLOUD,p.x,p.z); if(clx>-7.6&&clx<3.8&&Math.abs(clz)<4.6){ dryT+=dt; if(dryT>3) quest('dry'); } else dryT=0; }
+  if(CAN&&state.nf>.8&&Math.hypot(p.x-CAN.x,p.z-CAN.z)<34) quest('canopyNight');
   if(state.nf>.8&&Math.hypot(p.x,p.z+12)<80) quest('drones');
   const sp=CTX.sprint; if(sp){ const [lx,lz]=toLocal(sp,p.x,p.z);
     if(Math.abs(lx)<2.4&&Math.abs(lz)<17){ if(!sprintState&&Math.abs(lz)>14.6) sprintState={from:Math.sign(lz),t0:null};
@@ -613,7 +617,7 @@ try{ live=window.ParkLive(Object.assign(CTX,{STS,ZONES,camera,place,groundAt,pat
 
 /* ---------------- guided tour: an autopilot camera through the highlights ---------------- */
 const TOUR=[
-  {zone:'gate',pose:{x:0,y:76,z:238,look:[0,0,10]},t:'A Park That Thinks',l:'Nine zones and 87 stations from Devalok’s proposal to Lucknow Development Authority, built as one walk.'},
+  {zone:'gate',pose:{x:0,y:76,z:238,look:[0,0,10]},t:'A Park That Thinks',l:`Nine zones and ${STS.length} stations from Devalok’s proposal to Lucknow Development Authority, built as one walk.`},
   {zone:'gate',at:[0,93],h:.4,look:[0,5.5,112],t:'The megaphone trees',l:'Speak Hindi into one tree and the other answers in English or Urdu, 30 m away. The first thing you meet at the gate.'},
   {zone:'canopy',at:[0,86],h:1.5,look:[0,8,40],t:'The Breathing Canopy',l:'Eight kinetic steel trees, 15 to 18 m tall. The petals open for shade in the heat and fold for rain.'},
   {zone:'novelty',id:'cloud',v:[0,9.5],h:.4,ty:2.4,t:'Walk into a cloud',l:'AI makes weather on demand: fog to walk through, and rain that falls everywhere except where you stand.'},
@@ -627,6 +631,8 @@ const TOUR=[
   {zone:'canopy',night:1,at:[24,74],h:1,look:[0,9,40],t:'After dark',l:'The canopy glows with Lucknow’s live air quality, and the night garden lights up under your feet.'},
   {zone:'novelty',night:1,pose:{x:0,y:30,z:92,look:[0,27,0]},t:'Drone murmurations',l:'Each evening a flock of drones moves like starlings over the great lawn. Now it’s your turn to walk in.'},
 ];
+{ const NEED={'The megaphone trees':['kind','megaphone'],'After dark':['kind','canopy'],'Drone murmurations':['id','drones']};
+  const keep=TOUR.filter(s=>(s.id?STS.some(q=>q.id===s.id):true)&&(!NEED[s.t]||hasSt(NEED[s.t]))); TOUR.length=0; TOUR.push(...keep); }
 const tour={on:false,i:0,phase:'move',t:0,from:null,to:null,dur:3,lift:0,paused:false,dwell:8.5};
 function tourPose(s){ let x,y,z,lx,ly,lz;
   if(s.pose){ x=s.pose.x; y=s.pose.y; z=s.pose.z; [lx,ly,lz]=s.pose.look; }
@@ -660,7 +666,7 @@ $('#bTour').onclick=startTour; $('#bTourStart').onclick=startTour;
 
 /* ---------------- main loop ---------------- */
 let started=false, last=performance.now(), tAcc=0, shExt=70, fpsN=0, fpsT=0;
-const BUSY=['arena','court','paathshala','didis','bowler','dastango','cityfloor'].map(id=>STS.find(s=>s.id===id));
+const BUSY=['arena','court','paathshala','didis','bowler','dastango','cityfloor'].map(id=>STS.find(s=>s.id===id)).filter(Boolean);
 const AQIB=[[50,'#2E9E4F'],[100,'#9CCB3B'],[200,'#F2D33A'],[300,'#F08A24'],[400,'#D7263D'],[500,'#7E1F2B']];
 function frame(now){
   requestAnimationFrame(frame);
@@ -698,7 +704,7 @@ function frame(now){
     if(nearest&&!uiOpen()){ if(isTouch){ $('#tRead').style.display='block'; $('#tRead').textContent='Read · '+(nearest.name.length>22?nearest.name.slice(0,21)+'…':nearest.name); } else { $('#prompt').style.display='flex'; $('#promptName').textContent=nearest.name; } }
     else { $('#prompt').style.display='none'; $('#tRead').style.display='none'; } }
   for(const c of clouds){ c.position.x+=dt*1.6; if(c.position.x>460) c.position.x=-460; c.material.opacity=lerp(.85,.12,state.nf); }
-  if(audio&&frameN%6===0){ const dc=Math.hypot(player.x-CLOUD.x,player.z-CLOUD.z); let cr=0; for(const s of BUSY){ cr=Math.max(cr,1-Math.hypot(player.x-s.x,player.z-s.z)/34); } audio.update(dt*6,{nf:state.nf,rain:clamp(1-dc/22,0,1),crowd:clamp(cr,0,1),alt}); }
+  if(audio&&frameN%6===0){ const dc=CLOUD?Math.hypot(player.x-CLOUD.x,player.z-CLOUD.z):1e9; let cr=0; for(const s of BUSY){ cr=Math.max(cr,1-Math.hypot(player.x-s.x,player.z-s.z)/34); } audio.update(dt*6,{nf:state.nf,rain:clamp(1-dc/22,0,1),crowd:clamp(cr,0,1),alt}); }
   // keep the frame rate up on slower machines
   fpsN++; fpsT+=dt; if(fpsT>2.5){ const fps=fpsN/fpsT; fpsN=0; fpsT=0; if(started&&fps<30){ if(PR>(LOW?.8:1)){ PR=Math.max(LOW?.8:1,PR-.2); renderer.setPixelRatio(PR); resize(); if(composer){ composer.setPixelRatio(PR); composer.setSize(innerWidth,innerHeight); } } else if(composer&&bloom&&bloom.enabled){ bloom.enabled=false; } else if(sun.castShadow){ sun.castShadow=false; } } }
   if(started&&!tour.on){ liveTriggers(t,dt); if(frameN%10===0){ zoneBanner(); } }

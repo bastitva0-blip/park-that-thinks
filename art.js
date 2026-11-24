@@ -205,7 +205,7 @@ function zonePads(Cx){ const M=Cx.M; const mk=(c,o)=>new THREE.MeshStandardMater
   const [hx,hz]=Cx.ZONES.sports.hub, K2=Cx.worldKit(hx,hz,0); K2.put(new THREE.CylinderGeometry(11,11,.04,48),'rubberOrange',0,.02,0); K2.put(new THREE.TorusGeometry(10.6,.12,6,64).rotateX(PI/2),'pinkGlow',0,.05,0);
   const [nx,nz]=Cx.ZONES.novelty.hub, K3=Cx.worldKit(nx,nz,0); K3.put(new THREE.CylinderGeometry(10,10,.04,48),'novFloor',0,.02,0); K3.put(new THREE.TorusGeometry(9.6,.12,6,64).rotateX(PI/2),'pinkGlow',0,.05,0);
 }
-function canopyGlow(Cx){ const st=Cx.STS.find(s=>s.kind==='canopy'); const K=Cx.kitFor(st);
+function canopyGlow(Cx){ const st=Cx.STS.find(s=>s.kind==='canopy'); if(!st) return; const K=Cx.kitFor(st);
   for(let t=0;t<8;t++){ const a=t/8*PI*2+PI/8, R=t%2?17:13, H=15+((t*7)%4), lx=Math.cos(a)*R, lz=Math.sin(a)*R;
     K.put(Cy(2.1,2.3,.55,32),'marble',lx,.28,lz); K.put(new THREE.TorusGeometry(2.0,.05,6,48).rotateX(PI/2),'warmGlow',lx,.58,lz);
     for(let k=0;k<6;k++){ const ka=k/6*PI*2; K.put(Sp(.45,1),k%2?'leaf':'awningGold',lx+Math.cos(ka)*1.6,.75,lz+Math.sin(ka)*1.6); }
